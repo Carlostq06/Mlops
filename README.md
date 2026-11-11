@@ -106,3 +106,46 @@ streamlit run src/app.py
    - *Resultado:* Variables numéricas listas para regresores manteniendo coherencia semántica.
    - *Gráfico:* `reports/figures/decision_5_recodification.png`.
 
+---
+
+## 5. Módulo 2: Modelo, Baseline y Evaluación
+
+### 1. Justificación Problema → Tarea → Métrica (M2.1):
+* **Problema:** Valoración del precio de mercado de vehículos de segunda mano.
+* **Tarea:** Regresión supervisada sobre `selling_price`.
+* **Métrica principal (MAE):** Error Absoluto Medio expresado directamente en la moneda del problema (rupias indias). Permite a compradores y vendedores entender intuitivamente la desviación esperada.
+* **Métricas secundarias:** RMSE (penaliza desviaciones extremas) y R² (% varianza explicada).
+
+### 2. Baseline Dummy vs Modelo Final (M2.2):
+Se implementó un `DummyRegressor(strategy='mean')` como línea base mínima ("no hacer nada"):
+
+| Modelo | Val MAE (₹) | Val RMSE (₹) | Val R² | Supera al Dummy |
+| :--- | :---: | :---: | :---: | :---: |
+| **Dummy (Media)** | 292,053 | 471,951 | -0.0005 | *Línea Base* |
+| **Ridge Regressor** | 173,302 | 290,639 | 0.6206 | Sí (-40.7% MAE) |
+| **Random Forest** | 158,526 | 309,446 | 0.5699 | Sí (-45.7% MAE) |
+| **Gradient Boosting (Campeón)** | **146,587** | **264,637** | **0.6854** | **Sí (-49.8% MAE)** |
+
+> El modelo final (**Gradient Boosting**) reduce el error del Dummy prácticamente a la mitad (**-49.8%**) y eleva el R² de 0 a **0.6854**.
+
+### 3. Split Correcto sin Fugas (M2.3):
+* Partición: **Train (70% - 2,487 filas)**, **Validation (15% - 534 filas)** y **Test (15% - 534 filas)**.
+* Sin fugas: Los transformadores (`StandardScaler`, `OneHotEncoder`) se ajustan únicamente sobre Train.
+* La selección del modelo campeón se realizó comparando en Validación, manteniendo el Test completamente sellado.
+* **Resultados finales en TEST SET (Sellado):**
+  - **Test MAE:** 150,807 ₹
+  - **Test RMSE:** 273,274 ₹
+  - **Test R²:** 0.7127
+
+### 4. Técnicas y Resultados Visuales (M2.4):
+* `reports/figures/model_comparison.png`: Comparativa de MAE entre familias de modelos y baseline.
+* `reports/figures/residuals_plot.png`: Gráfico de residuales vs predichos sin patrones anómalos.
+* `reports/figures/predictions_vs_actual.png`: Comparación visual predicción vs realidad con línea ideal 1:1.
+* `reports/figures/residuals_distribution.png`: Campana de distribución de errores residuales centrada en 0.
+
+### 5. Reproducibilidad y Empaquetado (M2.5 y M3.2):
+* Semillas fijas: `random_state=42` en splits, preprocesadores y regresores.
+* Dependencias fijadas en `requirements.txt`.
+* Artefacto unificado guardado en `models/pipeline.joblib` (preprocesado + modelo en un solo paso).
+
+

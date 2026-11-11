@@ -9,10 +9,9 @@ venv/
 .venv/
 env/
 
-# Data outputs (keep raw if small or track processed models)
-models/*.joblib
-models/*.pkl
+# Logs and cache
 *.log
+
 
 # OS generated files
 .DS_Store
