@@ -44,7 +44,13 @@ flowchart LR
 ## 2. Estructura del repositorio
 
 ```text
-├── .github/workflows/ci.yml     # CI: flake8 + pytest en cada push / PR
+├── .github/workflows/
+│   ├── ci.yml                   # CI: flake8 + pytest en cada push / PR
+│   ├── retrain.yml              # Reentrenamiento semanal + drift + puerta de métrica
+│   └── release.yml              # CD con tag: imagen a GHCR + GitHub Release
+├── scripts/
+│   ├── metric_gate.py           # Puerta de métrica para promover modelos
+│   └── drift_check.py           # Detección de drift (KS + chi²)
 ├── data/raw/                    # CSV original
 ├── data/processed/              # CSV limpio + train/val/test
 ├── notebooks/
@@ -60,6 +66,8 @@ flowchart LR
 │   └── app.py                   # Mini-app Streamlit (consume la API)
 ├── tests/test_api.py            # Smoke tests de la API
 ├── models/pipeline.joblib       # Artefacto único: preprocesado + modelo
+├── models/metrics.json          # Métricas del modelo servido (las usa /version)
+├── CHANGELOG.md                 # Cambios por versión (va en la GitHub Release)
 ├── run_pipeline.py              # Todo el procesado en un solo comando
 ├── Dockerfile                   # Imagen de la API
 ├── requirements.txt             # Dependencias fijadas (==)
@@ -90,12 +98,13 @@ streamlit run src/app.py
 * App de usuario: <http://localhost:8501>
 * Swagger de la API: <http://localhost:8000/docs>
 * Health check: <http://localhost:8000/health>
+* Versión y métricas del modelo: <http://localhost:8000/version>
 
 Sin Docker, la API también arranca con: `uvicorn src.api:app --port 8000`
 
 **Tests y linter (lo mismo que ejecuta el CI):**
 ```bash
-flake8 src tests run_pipeline.py
+flake8 src tests scripts run_pipeline.py
 pytest -v
 ```
 
@@ -228,3 +237,26 @@ curl -X POST http://localhost:8000/predict -H "Content-Type: application/json" \
 | :--- | :--- |
 | CI: linter + tests en cada PR | [.github/workflows/ci.yml](.github/workflows/ci.yml): en cada `push` y `pull_request` a `main` ejecuta `flake8` y `pytest` (6 smoke tests de la API: health, predicción válida, km negativos, combustible inválido, campo que falta y Swagger) |
 | Procesado de un solo comando | `python run_pipeline.py`: descarga → auditoría/EDA → 5 decisiones + splits → entrenamiento → `models/pipeline.joblib`. Reproducible: con seed 42 da siempre las mismas métricas |
+
+---
+
+## 9. Extras (secundarios)
+
+| Módulo | Extra | Cómo comprobarlo |
+| :--- | :--- | :--- |
+| M2 | Comparación de 3 familias de modelo (Ridge, Random Forest, Gradient Boosting) | Sección 5 y `reports/figures/model_comparison.png` |
+| M3 | Endpoint de versión: `/version` devuelve la versión de la API y las métricas del modelo servido | <http://localhost:8000/version> |
+| M3 | Multi-stage build: la etapa 1 instala dependencias y la imagen final solo copia los paquetes | [Dockerfile](Dockerfile) |
+| M3 | Hardening: el contenedor corre con el usuario `appuser`, no como root | `docker exec cardekho-api whoami` → `appuser` |
+| M5 | Reentrenamiento programado con puerta de métrica: cada lunes (o a mano desde Actions) reentrena y solo hace commit del modelo si **gana al dummy** y **mejora el MAE del modelo actual** | [retrain.yml](.github/workflows/retrain.yml), [metric_gate.py](scripts/metric_gate.py) |
+| M5 | Detección de drift: test KS (numéricas) y chi² (categóricas) con p < 0,05. Guarda un informe en `reports/drift_report.json`. Se ejecuta en el reentrenamiento | `python scripts/drift_check.py` (sin drift) y `python scripts/drift_check.py --simulate` (detecta el drift simulado) |
+| M5 | CD con tag: tests → imagen en `ghcr.io/carlostq06/mlops-api` → GitHub Release con el changelog | [release.yml](.github/workflows/release.yml), [CHANGELOG.md](CHANGELOG.md) |
+
+**Cómo sacar una versión nueva:**
+```bash
+git tag v1.0.1
+git push origin v1.0.1
+```
+
+**Por qué la puerta usa "gana al dummy y mejora al actual":** un reentrenamiento automático nunca debe empeorar lo que está en producción.
+Si el modelo nuevo es igual o peor, se descarta y la API sigue sirviendo el anterior. Si ni siquiera gana al dummy, el job falla para avisar.
