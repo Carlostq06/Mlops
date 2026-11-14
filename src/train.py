@@ -33,6 +33,7 @@ os.makedirs(MODELS_DIR, exist_ok=True)
 
 SEED = 42
 
+
 def load_data():
     train_df = pd.read_csv(os.path.join(PROCESSED_DIR, "train.csv"))
     val_df = pd.read_csv(os.path.join(PROCESSED_DIR, "val.csv"))
@@ -47,6 +48,7 @@ def load_data():
         test_df[features], test_df[target]
     )
 
+
 def build_preprocessor():
     cat_cols = ["brand", "fuel", "seller_type", "transmission", "owner"]
     num_cols = ["year", "km_driven"]
@@ -57,6 +59,7 @@ def build_preprocessor():
             ("cat", OneHotEncoder(handle_unknown="ignore", sparse_output=False), cat_cols)
         ]
     )
+
 
 def train_and_evaluate():
     print("=" * 70)
@@ -137,7 +140,9 @@ def train_and_evaluate():
     champion_pipeline = best_candidate["model_obj"]
     print("\n" + "=" * 70)
     print(f"MODELO CAMPEÓN SELECCIONADO: {best_candidate['name']}")
-    print(f" -> Supera al Dummy explícitamente: MAE bajó de {results[0]['mae']:,.0f} a {best_candidate['mae']:,.0f} (-{(1 - best_candidate['mae']/results[0]['mae'])*100:.1f}%)")
+    dummy_mae = results[0]["mae"]
+    mejora = (1 - best_candidate["mae"] / dummy_mae) * 100
+    print(f" -> Supera al Dummy explícitamente: MAE bajó de {dummy_mae:,.0f} a {best_candidate['mae']:,.0f} (-{mejora:.1f}%)")
     print("=" * 70)
 
     # 3. Evaluación final en Test Set (Sellado hasta este momento)
@@ -190,9 +195,10 @@ def train_and_evaluate():
     # 5. Exportar Pipeline completo en un único artefacto (M3.2 requisito)
     model_artifact_path = os.path.join(MODELS_DIR, "pipeline.joblib")
     joblib.dump(champion_pipeline, model_artifact_path)
-    print(f"\n5. Artefacto único exportado con éxito:")
+    print("\n5. Artefacto único exportado con éxito:")
     print(f"   -> {model_artifact_path} ({os.path.getsize(model_artifact_path)/1024:.1f} KB)")
     print("=" * 70)
+
 
 if __name__ == "__main__":
     train_and_evaluate()

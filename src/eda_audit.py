@@ -4,7 +4,6 @@ Genera métricas impresas de auditoría y figuras visuales completas.
 """
 import os
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -17,28 +16,29 @@ FIGURES_DIR = os.path.join("reports", "figures")
 os.makedirs(FIGURES_DIR, exist_ok=True)
 RAW_DATA_PATH = os.path.join("data", "raw", "car_details.csv")
 
+
 def run_audit(df: pd.DataFrame):
     print("=" * 60)
     print("AUDITORÍA INICIAL DEL DATASET (REQUISITO M1.2)")
     print("=" * 60)
-    print(f"1. Dimensiones:")
+    print("1. Dimensiones:")
     print(f"   - Filas:    {df.shape[0]}")
     print(f"   - Columnas: {df.shape[1]}")
-    print(f"\n2. Tipos de datos por columna:")
+    print("\n2. Tipos de datos por columna:")
     for col, dtype in df.dtypes.items():
         print(f"   - {col:15s}: {dtype}")
-    
-    print(f"\n3. Valores Nulos:")
+
+    print("\n3. Valores Nulos:")
     null_counts = df.isnull().sum()
     for col, nulls in null_counts.items():
         print(f"   - {col:15s}: {nulls} ({(nulls / len(df)) * 100:.2f}%)")
     print(f"   Total nulos en el dataset: {null_counts.sum()}")
-    
+
     dup_count = df.duplicated().sum()
-    print(f"\n4. Registros Duplicados:")
+    print("\n4. Registros Duplicados:")
     print(f"   - Cantidad: {dup_count} ({(dup_count / len(df)) * 100:.2f}%)")
-    
-    print(f"\n5. Estadísticas de la Variable Target ('selling_price'):")
+
+    print("\n5. Estadísticas de la Variable Target ('selling_price'):")
     target = df["selling_price"]
     print(f"   - Mínimo:       {target.min():,.0f}")
     print(f"   - Percentil 25: {target.quantile(0.25):,.0f}")
@@ -48,6 +48,7 @@ def run_audit(df: pd.DataFrame):
     print(f"   - Máximo:       {target.max():,.0f}")
     print(f"   - Desv. Típica: {target.std():,.0f}")
     print("=" * 60)
+
 
 def generate_eda_plots(df: pd.DataFrame):
     print("\nGenerando visualizaciones EDA completas...")
@@ -71,13 +72,13 @@ def generate_eda_plots(df: pd.DataFrame):
     fig, axes = plt.subplots(2, 2, figsize=(14, 10))
     sns.countplot(data=df, x="fuel", ax=axes[0, 0], palette="Blues_r", hue="fuel", legend=False)
     axes[0, 0].set_title("Distribución por Tipo de Combustible (fuel)")
-    
+
     sns.countplot(data=df, x="seller_type", ax=axes[0, 1], palette="Greens_r", hue="seller_type", legend=False)
     axes[0, 1].set_title("Distribución por Tipo de Vendedor (seller_type)")
-    
+
     sns.countplot(data=df, x="transmission", ax=axes[1, 0], palette="Oranges_r", hue="transmission", legend=False)
     axes[1, 0].set_title("Distribución por Transmisión")
-    
+
     sns.countplot(data=df, x="owner", ax=axes[1, 1], palette="Purples_r", hue="owner", legend=False)
     axes[1, 1].set_title("Distribución por Propietario (owner)")
     axes[1, 1].tick_params(axis='x', rotation=30)
@@ -128,6 +129,7 @@ def generate_eda_plots(df: pd.DataFrame):
     plt.close()
 
     print(f"Todas las visualizaciones EDA guardadas en: {FIGURES_DIR}")
+
 
 if __name__ == "__main__":
     df_raw = pd.read_csv(RAW_DATA_PATH)

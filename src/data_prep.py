@@ -4,7 +4,6 @@ Genera datos limpios en data/processed/ y las figuras comparativas correspondien
 """
 import os
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.model_selection import train_test_split
@@ -15,6 +14,7 @@ RAW_PATH = os.path.join("data", "raw", "car_details.csv")
 PROCESSED_DIR = os.path.join("data", "processed")
 os.makedirs(FIGURES_DIR, exist_ok=True)
 os.makedirs(PROCESSED_DIR, exist_ok=True)
+
 
 def prepare_data():
     print("=" * 65)
@@ -29,7 +29,7 @@ def prepare_data():
     # -------------------------------------------------------------
     df_step1 = df_raw.drop_duplicates().copy()
     n_duplicates_dropped = n_initial - len(df_step1)
-    print(f"\n[Decisión 1 - Drop Duplicados]")
+    print("\n[Decisión 1 - Drop Duplicados]")
     print(f" -> Filas eliminadas: {n_duplicates_dropped} duplicados.")
     print(f" -> Filas resultantes: {len(df_step1)}")
 
@@ -48,7 +48,7 @@ def prepare_data():
     # -------------------------------------------------------------
     df_step2 = df_step1.copy()
     df_step2["brand"] = df_step2["name"].apply(lambda x: str(x).split(" ")[0].strip().title())
-    print(f"\n[Decisión 2 - Crear Variable 'brand']")
+    print("\n[Decisión 2 - Crear Variable 'brand']")
     print(f" -> De {df_raw['name'].nunique()} nombres únicos a {df_step2['brand'].nunique()} marcas.")
     top_brands = df_step2["brand"].value_counts().head(10)
     print(" -> Top 5 marcas más frecuentes:\n", top_brands.head(5).to_dict())
@@ -68,7 +68,7 @@ def prepare_data():
     REFERENCE_YEAR = 2020  # Último año presente en el dataset
     df_step3 = df_step2.copy()
     df_step3["vehicle_age"] = REFERENCE_YEAR - df_step3["year"]
-    print(f"\n[Decisión 3 - Crear Variable 'vehicle_age']")
+    print("\n[Decisión 3 - Crear Variable 'vehicle_age']")
     print(f" -> vehicle_age calculada como ({REFERENCE_YEAR} - year).")
     print(f" -> Rango de antigüedad: de {df_step3['vehicle_age'].min()} a {df_step3['vehicle_age'].max()} años.")
 
@@ -90,7 +90,7 @@ def prepare_data():
     km_cap = df_step3["km_driven"].quantile(0.995)
     df_step4 = df_step3[(df_step3["km_driven"] >= 500) & (df_step3["km_driven"] <= km_cap)].copy()
     n_outliers_dropped = len(df_step3) - len(df_step4)
-    print(f"\n[Decisión 4 - Filtro de Outliers en km_driven]")
+    print("\n[Decisión 4 - Filtro de Outliers en km_driven]")
     print(f" -> Umbral percentil 99.5: {km_cap:,.0f} km.")
     print(f" -> Registros anómalos eliminados: {n_outliers_dropped}")
     print(f" -> Filas resultantes: {len(df_step4)}")
@@ -118,9 +118,9 @@ def prepare_data():
     }
     df_step5["owner_num"] = df_step5["owner"].map(owner_map).fillna(1).astype(int)
     df_step5["transmission_num"] = (df_step5["transmission"] == "Automatic").astype(int)
-    print(f"\n[Decisión 5 - Recodificación Ordinal y Binaria]")
-    print(f" -> 'owner' mapeado ordenadamente a 'owner_num' (0 a 4).")
-    print(f" -> 'transmission' mapeado a binario 'transmission_num' (Manual: 0, Automatic: 1).")
+    print("\n[Decisión 5 - Recodificación Ordinal y Binaria]")
+    print(" -> 'owner' mapeado ordenadamente a 'owner_num' (0 a 4).")
+    print(" -> 'transmission' mapeado a binario 'transmission_num' (Manual: 0, Automatic: 1).")
 
     # Visual Decisión 5
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
@@ -143,7 +143,7 @@ def prepare_data():
 
     # Split 70% train, 15% val, 15% test con seed fija
     train_val_df, test_df = train_test_split(df_step5, test_size=0.15, random_state=42)
-    train_df, val_df = train_test_split(train_val_df, test_size=0.1765, random_state=42) # 0.1765 de 0.85 es ~0.15
+    train_df, val_df = train_test_split(train_val_df, test_size=0.1765, random_state=42)  # 0.1765 de 0.85 es ~0.15
 
     train_df.to_csv(os.path.join(PROCESSED_DIR, "train.csv"), index=False)
     val_df.to_csv(os.path.join(PROCESSED_DIR, "val.csv"), index=False)
@@ -154,6 +154,7 @@ def prepare_data():
     print(f" - Val:   {len(val_df)} filas ({len(val_df)/len(df_step5)*100:.1f}%)")
     print(f" - Test:  {len(test_df)} filas ({len(test_df)/len(df_step5)*100:.1f}%)")
     print("=" * 65)
+
 
 if __name__ == "__main__":
     prepare_data()
