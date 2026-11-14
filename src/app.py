@@ -10,6 +10,7 @@ import os
 import requests
 import streamlit as st
 
+
 def get_api_url() -> str:
     try:
         if "API_URL" in st.secrets:
