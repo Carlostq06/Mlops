@@ -1,78 +1,103 @@
-# Proyecto Final MLOps - Predicción de Precios de Vehículos de Ocasión (CarDekho)
+# Proyecto Final MLOps: ¿Cuánto vale mi coche usado? (CarDekho)
 
-**Autor:** Carlos  
-**Módulo:** Data Science & MLOps - Práctica Final  
-**Curso:** 2026 - Immune Technology Institute  
+**Autor:** Carlos · **Curso:** 2026, Immune Technology Institute, Práctica Final MLOps
 
----
+Una persona normal introduce los datos de su coche en una web (Streamlit) y recibe un precio estimado de reventa.
+La web llama a una API (FastAPI, en Docker) que sirve un modelo entrenado sobre el dataset CarDekho.
 
-## 1. Justificación del Proyecto y Elección del Dataset
-
-* **Dataset:** CarDekho Used Car Dataset (`CAR DETAILS FROM CAR DEKHO.csv`)
-* **Fuente:** Kaggle ([Vehicle Dataset from CarDekho](https://www.kaggle.com/datasets/nehalbirla/vehicle-dataset-from-cardekho)).
-* **Problema de Negocio:** Estimación del precio de reventa de vehículos de segunda mano en función de sus características técnicas y de uso (antigüedad, kilometraje, combustible, transmisión, propietario).
-* **Tipo de Tarea:** Regresión supervisada.
-* **Variable Target:** `selling_price` (precio de venta en rupias / moneda local).
-* **Métrica Principal Elegida:** **MAE (Mean Absolute Error)** y **RMSE (Root Mean Squared Error)**:
-  - El MAE es directamente interpretable para el usuario final (error promedio en unidades monetarias).
-  - El RMSE penaliza desviaciones grandes en vehículos de gama alta.
+```mermaid
+flowchart LR
+    A["CSV Kaggle"] --> B["run_pipeline.py: EDA + limpieza + entrenamiento"]
+    B --> C["models/pipeline.joblib"]
+    C --> D["API FastAPI en Docker :8000"]
+    D --> E["App Streamlit :8501"]
+    E --> F["Usuario final"]
+```
 
 ---
 
-## 2. Estructura del Repositorio
+## 1. Elección del dataset (M1.1)
+
+* **Ruta elegida:** Opción A, dataset de la casa **Vehicle Dataset from CarDekho**
+  ([Kaggle](https://www.kaggle.com/datasets/nehalbirla/vehicle-dataset-from-cardekho)), con su problema natural asumido:
+  **regresión del precio de reventa**. Sabemos que con esta ruta M1 queda topado a 16/20.
+* **Fichero usado:** `CAR DETAILS FROM CAR DEKHO.csv` (4.340 filas × 8 columnas), uno de los ficheros incluidos en ese dataset de Kaggle.
+  Lo elegimos porque sus columnas (marca/modelo, año, km, combustible, vendedor, transmisión, propietarios)
+  son datos que **cualquier usuario conoce de su coche**, y eso hace posible la mini-app de M4.
+  Los ficheros con más columnas (mileage, engine, max_power, torque) piden datos técnicos que un usuario normal no sabe.
+* **Target:** `selling_price` (rupias indias, INR).
+* **Diccionario de columnas:**
+
+| Columna | Tipo | Descripción |
+| :--- | :--- | :--- |
+| `name` | texto | Marca + modelo + versión (p. ej. "Maruti Swift Dzire VDI") |
+| `year` | entero | Año de matriculación |
+| `selling_price` | entero | **Target**: precio de venta (INR) |
+| `km_driven` | entero | Kilómetros recorridos |
+| `fuel` | categoría | Petrol, Diesel, CNG, LPG, Electric |
+| `seller_type` | categoría | Individual, Dealer, Trustmark Dealer |
+| `transmission` | categoría | Manual, Automatic |
+| `owner` | categoría | First Owner, Second Owner, ..., Test Drive Car |
+
+---
+
+## 2. Estructura del repositorio
 
 ```text
-mlp/
-├── .github/workflows/ci.yml       # Integración Continua (Linter + Smoke Tests)
-├── data/
-│   ├── raw/                       # Datos crudos descargados
-│   └── processed/                 # Datos limpios y particionados (train, val, test)
+├── .github/workflows/ci.yml     # CI: flake8 + pytest en cada push / PR
+├── data/raw/                    # CSV original
+├── data/processed/              # CSV limpio + train/val/test
 ├── notebooks/
-│   ├── 01_eda_and_audit.ipynb     # Auditoría inicial y EDA completa
-│   └── 02_model_evaluation.ipynb  # Entrenamiento, validación y comparativa
+│   ├── 01_eda_and_audit.ipynb   # Auditoría + EDA explicada
+│   └── 02_model_evaluation.ipynb# Modelos, baseline y evaluación explicados
+├── reports/figures/             # Todas las gráficas (EDA, decisiones, modelo)
 ├── src/
-│   ├── download_data.py           # Descarga automatizada del dataset
-│   ├── data_prep.py               # Pipeline de limpieza y 5 decisiones justificadas
-│   ├── train.py                   # Entrenamiento y exportación del pipeline unificado
-│   ├── api.py                     # API de inferencia en FastAPI (/predict, /health)
-│   └── app.py                     # Frontend de usuario en Streamlit
-├── tests/
-│   └── test_api.py                # Smoke tests y validaciones de la API
-├── models/
-│   └── pipeline.joblib            # Artefacto único (preprocesado + modelo)
-├── Dockerfile                     # Imagen Docker de la API
-├── requirements.txt               # Dependencias fijadas
-└── README.md                      # Memoria técnica completa del proyecto
+│   ├── download_data.py         # Descarga el CSV
+│   ├── eda_audit.py             # Auditoría impresa + gráficas EDA
+│   ├── data_prep.py             # 5 decisiones de preparación + splits
+│   ├── train.py                 # Entrena, compara con dummy, evalúa y exporta el modelo
+│   ├── api.py                   # API FastAPI (/health, /predict, /docs)
+│   └── app.py                   # Mini-app Streamlit (consume la API)
+├── tests/test_api.py            # Smoke tests de la API
+├── models/pipeline.joblib       # Artefacto único: preprocesado + modelo
+├── run_pipeline.py              # Todo el procesado en un solo comando
+├── Dockerfile                   # Imagen de la API
+├── requirements.txt             # Dependencias fijadas (==)
+└── requirements-api.txt         # Dependencias mínimas de la imagen Docker
 ```
 
 ---
 
-## 3. Guía de Ejecución Rápida (Demo en 2 Minutos)
+## 3. Cómo ejecutarlo (demo en 2 minutos)
 
-### Requisitos previos
-- Python 3.10+
-- Entorno virtual o dependencias instaladas:
+**Requisitos:** Python 3.13 y Docker Desktop.
+
 ```bash
+# 0) Instalar dependencias (solo la primera vez)
 pip install -r requirements.txt
-```
 
-### Ejecutar el pipeline completo en 1 solo comando:
-```bash
-python src/train.py
-```
+# 1) (Opcional) Regenerar todo: descarga + EDA + limpieza + entrenamiento
+python run_pipeline.py
 
-### Arrancar la API de inferencia (FastAPI):
-```bash
-uvicorn src.api:app --reload --host 0.0.0.0 --port 8000
-```
-- Documentación Swagger interactiva: `http://localhost:8000/docs`
-- Health check: `http://localhost:8000/health`
+# 2) Arrancar la API en Docker
+docker build -t cardekho-api .
+docker run -d --name cardekho-api -p 8000:8000 cardekho-api
 
-### Arrancar la Mini-App (Streamlit):
-```bash
+# 3) Arrancar la app para el usuario
 streamlit run src/app.py
 ```
-- Acceso en navegador: `http://localhost:8501`
+
+* App de usuario: <http://localhost:8501>
+* Swagger de la API: <http://localhost:8000/docs>
+* Health check: <http://localhost:8000/health>
+
+Sin Docker, la API también arranca con: `uvicorn src.api:app --port 8000`
+
+**Tests y linter (lo mismo que ejecuta el CI):**
+```bash
+flake8 src tests run_pipeline.py
+pytest -v
+```
 
 ---
 
@@ -148,4 +173,58 @@ Se implementó un `DummyRegressor(strategy='mean')` como línea base mínima ("n
 * Dependencias fijadas en `requirements.txt`.
 * Artefacto unificado guardado en `models/pipeline.joblib` (preprocesado + modelo en un solo paso).
 
+> **Nota sobre las variables creadas en las decisiones 3 y 5:** `vehicle_age`, `owner_num` y `transmission_num` se dejan en
+> `car_details_cleaned.csv` como análisis, pero el modelo usa las columnas originales `year`, `owner` y `transmission`.
+> Motivo: así la API recibe exactamente lo que el usuario sabe de su coche y **todo** el preprocesado
+> (escalado + One-Hot) vive dentro de `pipeline.joblib`. `vehicle_age` es solo `2020 - year`, así que no aporta información nueva al modelo,
+> y el One-Hot de `owner` y `transmission` recoge la misma señal que su recodificación numérica.
 
+---
+
+## 6. Módulo 3: Despliegue (API + Docker)
+
+| Mínimo | Cómo se cumple |
+| :--- | :--- |
+| API con `/predict` y `/health` | [src/api.py](src/api.py) con FastAPI |
+| Pipeline empaquetado entero | `models/pipeline.joblib` = `ColumnTransformer` (StandardScaler + OneHotEncoder) + `GradientBoostingRegressor`. El cliente manda datos en crudo |
+| Esquema documentado (Swagger) | Modelos Pydantic `CarInput` / `PredictionOutput`, servidos en `/docs` |
+| Imagen Docker que arranca en local | [Dockerfile](Dockerfile) (`python:3.13-slim`, solo las dependencias de `requirements-api.txt`) |
+| Validación y errores controlados | Ver tabla de abajo |
+
+**Ejemplo de petición:**
+```bash
+curl -X POST http://localhost:8000/predict -H "Content-Type: application/json" \
+  -d '{"brand":"Maruti","year":2015,"km_driven":50000,"fuel":"Petrol","seller_type":"Individual","transmission":"Manual","owner":"First Owner"}'
+# -> {"predicted_price": 342268.59, "currency": "INR"}
+```
+
+**Errores controlados:**
+
+| Caso | Respuesta |
+| :--- | :--- |
+| Campo que falta, tipo incorrecto | `422` con el detalle del campo |
+| `km_driven` fuera de [500, 300000], `year` fuera de [1990, 2020] | `422` (rangos vistos en entrenamiento: no extrapolamos) |
+| Categoría desconocida (p. ej. `fuel: "Gasolina"`, marca no vista) | `422` con la lista de valores válidos |
+| Modelo no cargado | `503` |
+| Fallo inesperado al predecir | `500` con mensaje |
+| Predicción negativa | Se acota al mínimo del dataset (20.000 INR) |
+
+---
+
+## 7. Módulo 4: App de usuario (Streamlit)
+
+| Mínimo | Cómo se cumple |
+| :--- | :--- |
+| Uso sin terminal ni Python | Formulario web con desplegables y sliders → botón "Calcular precio" → precio en grande + aviso del error medio (~150.000 INR) |
+| Consume la API de M3 | [src/app.py](src/app.py) hace `POST /predict` con `requests`. No carga el modelo. La URL se configura con la variable `API_URL` |
+| Funcionando al evaluar | Demo local guiada (sección 3) |
+| Estados de espera y error | Al abrir la app: banner verde/rojo según `/health`. Al predecir: spinner "Calculando precio...". Errores: API caída, 422 o 5xx muestran un mensaje claro |
+
+---
+
+## 8. Módulo 5: Automatización
+
+| Mínimo | Cómo se cumple |
+| :--- | :--- |
+| CI: linter + tests en cada PR | [.github/workflows/ci.yml](.github/workflows/ci.yml): en cada `push` y `pull_request` a `main` ejecuta `flake8` y `pytest` (6 smoke tests de la API: health, predicción válida, km negativos, combustible inválido, campo que falta y Swagger) |
+| Procesado de un solo comando | `python run_pipeline.py`: descarga → auditoría/EDA → 5 decisiones + splits → entrenamiento → `models/pipeline.joblib`. Reproducible: con seed 42 da siempre las mismas métricas |
