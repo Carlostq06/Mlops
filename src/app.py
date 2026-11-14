@@ -52,7 +52,7 @@ with col1:
     available_models = BRAND_MODELS.get(brand, ["Otro"])
     default_model_idx = available_models.index("Swift") if "Swift" in available_models else 0
     car_model = st.selectbox("Modelo", available_models, index=default_model_idx)
-    year = st.slider("Año de matriculación", 1992, 2025, 2015)
+    year = st.slider("Año de matriculación", 1992, 2020, 2015)
     km_driven = st.number_input("Kilómetros recorridos", min_value=500, max_value=300000, value=50000, step=1000)
 with col2:
     fuel = st.selectbox("Combustible", ["Petrol", "Diesel", "CNG", "LPG", "Electric"])
@@ -88,15 +88,10 @@ if submitted:
         price = data["predicted_price"]
         price_inr = data.get("predicted_price_inr")
         st.metric("Precio estimado", f"{price:,.0f} €")
-        if year > 2020:
-            st.info(
-                "Nota: el dataset de entrenamiento llega hasta 2020; para años 2021–2025 "
-                "el modelo toma como referencia el valor de un coche de 2020."
-            )
         extra_inr = f" (~₹ {price_inr:,.0f})" if price_inr is not None else ""
         st.caption(
-            f"Estimación del modelo (Gradient Boosting){extra_inr}. "
-            "Error medio en test: unos 1.560 € (~₹140.000), tómalo como orientación, no como precio exacto."
+            f"Estimación del modelo (Random Forest){extra_inr}. "
+            "Error medio en test: unos 1.308 € (~₹117.700), tómalo como orientación, no como precio exacto."
         )
     elif r.status_code == 422:
         st.error("Algún dato no es válido. Revisa el formulario.")

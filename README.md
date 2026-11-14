@@ -212,7 +212,7 @@ curl -X POST http://localhost:8000/predict -H "Content-Type: application/json" \
 | Caso | Respuesta |
 | :--- | :--- |
 | Campo que falta, tipo incorrecto | `422` con el detalle del campo |
-| `km_driven` fuera de [500, 300000], `year` fuera de [1990, 2025] | `422` (rango validado) |
+| `km_driven` fuera de [500, 300000], `year` fuera de [1990, 2020] | `422` (rango visto en entrenamiento: no extrapolamos) |
 | Categoría desconocida (p. ej. `fuel: "Gasolina"`, marca no vista) | `422` con la lista de valores válidos |
 | Modelo no cargado | `503` |
 | Fallo inesperado al predecir | `500` con mensaje |

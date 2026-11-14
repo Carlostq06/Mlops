@@ -36,7 +36,7 @@ class CarInput(BaseModel):
     """Datos de entrada de un coche."""
     brand: BRANDS = Field(..., description="Marca del coche", examples=["Maruti"])
     car_model: str = Field(..., min_length=1, max_length=50, description="Modelo del coche (ej. Swift, City, i20)", examples=["Swift"])
-    year: int = Field(..., ge=1990, le=2025, description="Año de matriculación (1990-2025)", examples=[2015])
+    year: int = Field(..., ge=1990, le=2020, description="Año de matriculación (1990-2020)", examples=[2015])
     km_driven: int = Field(..., ge=500, le=300000, description="Kilómetros recorridos", examples=[50000])
     fuel: Literal["Petrol", "Diesel", "CNG", "LPG", "Electric"] = Field(..., examples=["Petrol"])
     seller_type: Literal["Individual", "Dealer", "Trustmark Dealer"] = Field(..., examples=["Individual"])
