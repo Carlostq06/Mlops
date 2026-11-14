@@ -23,14 +23,16 @@ jobs:
       - name: Instalar dependencias
         run: pip install -r requirements.txt
 
-      - name: Guardar metricas del modelo actual
-        run: cp models/metrics.json /tmp/old_metrics.json
+      - name: Guardar metricas y datos del modelo actual
+        run: |
+          cp models/metrics.json /tmp/old_metrics.json
+          cp data/processed/train.csv /tmp/old_train.csv
 
       - name: Reentrenar (pipeline completo)
         run: python run_pipeline.py
 
-      - name: Detectar drift (informativo)
-        run: python scripts/drift_check.py || echo "Drift detectado, revisar el informe"
+      - name: Detectar drift entre el train anterior y el nuevo (informativo)
+        run: python scripts/drift_check.py /tmp/old_train.csv data/processed/train.csv || echo "Drift detectado, revisar el informe"
 
       - name: Puerta de metrica
         id: gate
