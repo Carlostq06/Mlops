@@ -204,7 +204,7 @@ Se implementó un `DummyRegressor(strategy='mean')` como línea base mínima ("n
 ```bash
 curl -X POST http://localhost:8000/predict -H "Content-Type: application/json" \
   -d '{"brand":"Maruti","year":2015,"km_driven":50000,"fuel":"Petrol","seller_type":"Individual","transmission":"Manual","owner":"First Owner"}'
-# -> {"predicted_price": 342268.59, "currency": "INR"}
+# -> {"predicted_price": 3802.98, "currency": "EUR", "predicted_price_inr": 342268.59}
 ```
 
 **Errores controlados:**
@@ -212,7 +212,7 @@ curl -X POST http://localhost:8000/predict -H "Content-Type: application/json" \
 | Caso | Respuesta |
 | :--- | :--- |
 | Campo que falta, tipo incorrecto | `422` con el detalle del campo |
-| `km_driven` fuera de [500, 300000], `year` fuera de [1990, 2020] | `422` (rangos vistos en entrenamiento: no extrapolamos) |
+| `km_driven` fuera de [500, 300000], `year` fuera de [1990, 2025] | `422` (rango validado) |
 | Categoría desconocida (p. ej. `fuel: "Gasolina"`, marca no vista) | `422` con la lista de valores válidos |
 | Modelo no cargado | `503` |
 | Fallo inesperado al predecir | `500` con mensaje |

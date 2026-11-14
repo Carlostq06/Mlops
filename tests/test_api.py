@@ -27,6 +27,18 @@ def test_predict_ok():
     r = client.post("/predict", json=VALID_CAR)
     assert r.status_code == 200
     assert r.json()["predicted_price"] > 0
+    assert r.json()["currency"] == "EUR"
+
+
+def test_predict_year_2025():
+    r = client.post("/predict", json={**VALID_CAR, "year": 2025})
+    assert r.status_code == 200
+    assert r.json()["predicted_price"] > 0
+
+
+def test_predict_future_year_invalid():
+    r = client.post("/predict", json={**VALID_CAR, "year": 2030})
+    assert r.status_code == 422
 
 
 def test_predict_negative_km():

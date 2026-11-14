@@ -37,7 +37,7 @@ with st.form("car_form"):
     col1, col2 = st.columns(2)
     with col1:
         brand = st.selectbox("Marca", BRANDS, index=BRANDS.index("Maruti"))
-        year = st.slider("Año de matriculación", 1992, 2020, 2015)
+        year = st.slider("Año de matriculación", 1992, 2025, 2015)
         km_driven = st.number_input("Kilómetros recorridos", min_value=500, max_value=300000, value=50000, step=1000)
         fuel = st.selectbox("Combustible", ["Petrol", "Diesel", "CNG", "LPG", "Electric"])
     with col2:
@@ -67,11 +67,19 @@ if submitted:
             st.stop()
 
     if r.status_code == 200:
-        price = r.json()["predicted_price"]
-        st.metric("Precio estimado", f"₹ {price:,.0f}")
+        data = r.json()
+        price = data["predicted_price"]
+        price_inr = data.get("predicted_price_inr")
+        st.metric("Precio estimado", f"{price:,.0f} €")
+        if year > 2020:
+            st.info(
+                "Nota: el dataset de entrenamiento llega hasta 2020; para años 2021–2025 "
+                "el modelo toma como referencia el valor de un coche de 2020."
+            )
+        extra_inr = f" (~₹ {price_inr:,.0f})" if price_inr is not None else ""
         st.caption(
-            "Estimación del modelo (Gradient Boosting). Error medio en test: "
-            "unos ₹150.000, tómalo como orientación, no como precio exacto."
+            f"Estimación del modelo (Gradient Boosting){extra_inr}. "
+            "Error medio en test: unos 1.675 € (~₹150.000), tómalo como orientación, no como precio exacto."
         )
     elif r.status_code == 422:
         st.error("Algún dato no es válido. Revisa el formulario.")

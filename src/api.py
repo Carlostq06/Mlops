@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 
 MODEL_PATH = os.getenv("MODEL_PATH", os.path.join("models", "pipeline.joblib"))
 METRICS_PATH = os.path.join(os.path.dirname(MODEL_PATH), "metrics.json")
+INR_TO_EUR = 1.0 / 90.0  # Tasa de cambio aproximada (1 EUR ≈ 90 INR)
 
 # Marcas vistas en entrenamiento (si llega otra, devolvemos 422)
 BRANDS = Literal[
@@ -34,7 +35,7 @@ BRANDS = Literal[
 class CarInput(BaseModel):
     """Datos de entrada de un coche."""
     brand: BRANDS = Field(..., description="Marca del coche", examples=["Maruti"])
-    year: int = Field(..., ge=1990, le=2020, description="Año de matriculación (rango visto en entrenamiento)", examples=[2015])
+    year: int = Field(..., ge=1990, le=2025, description="Año de matriculación (1990-2025)", examples=[2015])
     km_driven: int = Field(..., ge=500, le=300000, description="Kilómetros recorridos", examples=[50000])
     fuel: Literal["Petrol", "Diesel", "CNG", "LPG", "Electric"] = Field(..., examples=["Petrol"])
     seller_type: Literal["Individual", "Dealer", "Trustmark Dealer"] = Field(..., examples=["Individual"])
@@ -47,8 +48,9 @@ class CarInput(BaseModel):
 
 class PredictionOutput(BaseModel):
     """Respuesta de /predict."""
-    predicted_price: float = Field(..., description="Precio estimado en rupias indias (INR)")
-    currency: str = "INR"
+    predicted_price: float = Field(..., description="Precio estimado en euros (EUR)")
+    currency: str = "EUR"
+    predicted_price_inr: float = Field(..., description="Precio estimado original en rupias indias (INR)")
 
 
 app = FastAPI(
@@ -85,9 +87,13 @@ def predict(car: CarInput):
         raise HTTPException(status_code=503, detail="Modelo no cargado. Ejecuta primero el entrenamiento.")
     try:
         df = pd.DataFrame([car.model_dump()])
-        price = float(model.predict(df)[0])
+        price_inr = float(model.predict(df)[0])
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al predecir: {e}")
-    # Un precio negativo no tiene sentido, lo acotamos al minimo visto (20.000)
-    price = max(price, 20000.0)
-    return PredictionOutput(predicted_price=round(price, 2))
+    # Un precio negativo no tiene sentido, lo acotamos al minimo visto (20.000 INR)
+    price_inr = max(price_inr, 20000.0)
+    price_eur = price_inr * INR_TO_EUR
+    return PredictionOutput(
+        predicted_price=round(price_eur, 2),
+        predicted_price_inr=round(price_inr, 2),
+    )
