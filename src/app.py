@@ -4,20 +4,32 @@ Modulo 4: Mini-app para el usuario final (Streamlit).
 El usuario rellena un formulario y la app llama a la API de M3 (/predict).
 La app NO carga el modelo: solo consume la API.
 """
+import json
 import os
 
 import requests
 import streamlit as st
 
 API_URL = os.getenv("API_URL", "http://localhost:8000")
+BRAND_MODELS_PATH = os.path.join("models", "brand_models.json")
 
-BRANDS = [
-    "Ambassador", "Audi", "Bmw", "Chevrolet", "Daewoo", "Datsun", "Fiat",
-    "Force", "Ford", "Honda", "Hyundai", "Isuzu", "Jaguar", "Jeep", "Kia",
-    "Land", "Mahindra", "Maruti", "Mercedes-Benz", "Mg", "Mitsubishi",
-    "Nissan", "Opelcorsa", "Renault", "Skoda", "Tata", "Toyota",
-    "Volkswagen", "Volvo",
-]
+DEFAULT_BRAND_MODELS = {
+    "Maruti": ["Swift", "Alto", "Wagon", "Dzire", "Baleno"],
+    "Hyundai": ["i20", "i10", "Grand", "Verna", "Creta"],
+    "Honda": ["City", "Amaze", "Brio", "Jazz"],
+    "Toyota": ["Innova", "Fortuner", "Etios", "Corolla"],
+    "Mahindra": ["Scorpio", "XUV500", "Bolero"],
+    "Tata": ["Indica", "Nexon", "Tiago", "Safari"],
+    "Ford": ["Figo", "Ecosport", "Endeavour"],
+}
+
+if os.path.exists(BRAND_MODELS_PATH):
+    with open(BRAND_MODELS_PATH, encoding="utf-8") as f:
+        BRAND_MODELS = json.load(f)
+else:
+    BRAND_MODELS = DEFAULT_BRAND_MODELS
+
+BRANDS = sorted(BRAND_MODELS.keys())
 
 st.set_page_config(page_title="¿Cuánto vale mi coche?", page_icon="🚗")
 st.title("🚗 ¿Cuánto vale mi coche usado?")
@@ -33,25 +45,30 @@ try:
 except requests.exceptions.RequestException:
     st.error(f"No se puede conectar con la API en {API_URL}. ¿Está arrancada?")
 
-with st.form("car_form"):
-    col1, col2 = st.columns(2)
-    with col1:
-        brand = st.selectbox("Marca", BRANDS, index=BRANDS.index("Maruti"))
-        year = st.slider("Año de matriculación", 1992, 2025, 2015)
-        km_driven = st.number_input("Kilómetros recorridos", min_value=500, max_value=300000, value=50000, step=1000)
-        fuel = st.selectbox("Combustible", ["Petrol", "Diesel", "CNG", "LPG", "Electric"])
-    with col2:
-        transmission = st.radio("Transmisión", ["Manual", "Automatic"])
-        seller_type = st.selectbox("Tipo de vendedor", ["Individual", "Dealer", "Trustmark Dealer"])
-        owner = st.selectbox(
-            "Propietarios anteriores",
-            ["First Owner", "Second Owner", "Third Owner", "Fourth & Above Owner", "Test Drive Car"],
-        )
-    submitted = st.form_submit_button("Calcular precio")
+col1, col2 = st.columns(2)
+with col1:
+    default_brand_idx = BRANDS.index("Maruti") if "Maruti" in BRANDS else 0
+    brand = st.selectbox("Marca", BRANDS, index=default_brand_idx)
+    available_models = BRAND_MODELS.get(brand, ["Otro"])
+    default_model_idx = available_models.index("Swift") if "Swift" in available_models else 0
+    car_model = st.selectbox("Modelo", available_models, index=default_model_idx)
+    year = st.slider("Año de matriculación", 1992, 2025, 2015)
+    km_driven = st.number_input("Kilómetros recorridos", min_value=500, max_value=300000, value=50000, step=1000)
+with col2:
+    fuel = st.selectbox("Combustible", ["Petrol", "Diesel", "CNG", "LPG", "Electric"])
+    transmission = st.radio("Transmisión", ["Manual", "Automatic"])
+    seller_type = st.selectbox("Tipo de vendedor", ["Individual", "Dealer", "Trustmark Dealer"])
+    owner = st.selectbox(
+        "Propietarios anteriores",
+        ["First Owner", "Second Owner", "Third Owner", "Fourth & Above Owner", "Test Drive Car"],
+    )
+
+submitted = st.button("Calcular precio", type="primary")
 
 if submitted:
     payload = {
         "brand": brand,
+        "car_model": car_model,
         "year": int(year),
         "km_driven": int(km_driven),
         "fuel": fuel,
@@ -79,7 +96,7 @@ if submitted:
         extra_inr = f" (~₹ {price_inr:,.0f})" if price_inr is not None else ""
         st.caption(
             f"Estimación del modelo (Gradient Boosting){extra_inr}. "
-            "Error medio en test: unos 1.675 € (~₹150.000), tómalo como orientación, no como precio exacto."
+            "Error medio en test: unos 1.560 € (~₹140.000), tómalo como orientación, no como precio exacto."
         )
     elif r.status_code == 422:
         st.error("Algún dato no es válido. Revisa el formulario.")

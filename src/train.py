@@ -41,7 +41,7 @@ def load_data():
     val_df = pd.read_csv(os.path.join(PROCESSED_DIR, "val.csv"))
     test_df = pd.read_csv(os.path.join(PROCESSED_DIR, "test.csv"))
 
-    features = ["year", "km_driven", "fuel", "seller_type", "transmission", "owner", "brand"]
+    features = ["year", "km_driven", "fuel", "seller_type", "transmission", "owner", "brand", "car_model"]
     target = "selling_price"
 
     return (
@@ -52,7 +52,7 @@ def load_data():
 
 
 def build_preprocessor():
-    cat_cols = ["brand", "fuel", "seller_type", "transmission", "owner"]
+    cat_cols = ["brand", "car_model", "fuel", "seller_type", "transmission", "owner"]
     num_cols = ["year", "km_driven"]
 
     return ColumnTransformer(
@@ -213,6 +213,15 @@ def train_and_evaluate():
     with open(os.path.join(MODELS_DIR, "metrics.json"), "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=2)
     print(f"   -> {os.path.join(MODELS_DIR, 'metrics.json')}")
+
+    # Guardar catalogo marca -> modelos para el desplegable de la app
+    brand_models = {
+        b: sorted(grp["car_model"].unique().tolist())
+        for b, grp in X_train.groupby("brand")
+    }
+    with open(os.path.join(MODELS_DIR, "brand_models.json"), "w", encoding="utf-8") as f:
+        json.dump(brand_models, f, indent=2)
+    print(f"   -> {os.path.join(MODELS_DIR, 'brand_models.json')}")
     print("=" * 70)
 
 

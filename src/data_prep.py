@@ -44,12 +44,17 @@ def prepare_data():
     plt.close()
 
     # -------------------------------------------------------------
-    # DECISIÓN 2: Crear variable 'brand' extrayendo la marca de 'name'
+    # DECISIÓN 2: Crear variables 'brand' y 'car_model' desde 'name'
     # -------------------------------------------------------------
     df_step2 = df_step1.copy()
     df_step2["brand"] = df_step2["name"].apply(lambda x: str(x).split(" ")[0].strip().title())
-    print("\n[Decisión 2 - Crear Variable 'brand']")
-    print(f" -> De {df_raw['name'].nunique()} nombres únicos a {df_step2['brand'].nunique()} marcas.")
+    df_step2["car_model"] = df_step2["name"].apply(
+        lambda x: str(x).split(" ")[1].strip().title() if len(str(x).split(" ")) > 1 else "Unknown"
+    )
+    print("\n[Decisión 2 - Crear Variables 'brand' y 'car_model']")
+    n_brands = df_step2["brand"].nunique()
+    n_models = df_step2["car_model"].nunique()
+    print(f" -> De {df_raw['name'].nunique()} nombres únicos a {n_brands} marcas y {n_models} modelos.")
     top_brands = df_step2["brand"].value_counts().head(10)
     print(" -> Top 5 marcas más frecuentes:\n", top_brands.head(5).to_dict())
 

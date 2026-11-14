@@ -7,6 +7,7 @@ client = TestClient(app)
 
 VALID_CAR = {
     "brand": "Maruti",
+    "car_model": "Swift",
     "year": 2015,
     "km_driven": 50000,
     "fuel": "Petrol",
