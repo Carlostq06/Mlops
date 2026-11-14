@@ -10,7 +10,16 @@ import os
 import requests
 import streamlit as st
 
-API_URL = os.getenv("API_URL", "http://localhost:8000")
+def get_api_url() -> str:
+    try:
+        if "API_URL" in st.secrets:
+            return str(st.secrets["API_URL"]).rstrip("/")
+    except Exception:
+        pass
+    return os.getenv("API_URL", "http://localhost:8000").rstrip("/")
+
+
+API_URL = get_api_url()
 BRAND_MODELS_PATH = os.path.join("models", "brand_models.json")
 
 DEFAULT_BRAND_MODELS = {
@@ -37,7 +46,7 @@ st.write("Rellena los datos de tu coche y te damos un precio estimado de reventa
 
 # Estado de la API (el usuario siempre ve si el sistema está disponible)
 try:
-    health = requests.get(f"{API_URL}/health", timeout=3).json()
+    health = requests.get(f"{API_URL}/health", timeout=20).json()
     if health.get("model_loaded"):
         st.success("Servicio de predicción disponible ✅")
     else:
@@ -78,7 +87,7 @@ if submitted:
     }
     with st.spinner("Calculando precio..."):
         try:
-            r = requests.post(f"{API_URL}/predict", json=payload, timeout=10)
+            r = requests.post(f"{API_URL}/predict", json=payload, timeout=30)
         except requests.exceptions.RequestException:
             st.error("No se pudo contactar con la API. Inténtalo de nuevo en unos segundos.")
             st.stop()
