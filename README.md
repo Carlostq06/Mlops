@@ -123,9 +123,9 @@ pytest -v
    - *Motivo:* 763 registros eran réplicas exactas. Mantenerlos provocaría sobreajuste y fuga de datos (data leakage) entre train y test.
    - *Resultado:* Reducción de 4,340 a 3,577 registros únicos.
    - *Gráfico:* `reports/figures/decision_1_drop_duplicates.png`.
-2. **Decisión 2 (Crear - Extracción de la Marca `brand`):**
-   - *Motivo:* El campo `name` contenía 1,491 nombres de modelos largos con excesiva cardinalidad. Extrayendo la primera palabra obtenemos 29 marcas principales que preservan la señal del segmento y reputación del fabricante.
-   - *Resultado:* Nueva columna `brand` categórica (Top 5: Maruti, Hyundai, Mahindra, Tata, Ford).
+2. **Decisión 2 (Crear - Extracción de la Marca `brand` y Modelo `car_model`):**
+   - *Motivo:* El campo `name` contenía 1,491 nombres completos con excesiva cardinalidad. Extrayendo la primera palabra obtenemos 29 marcas principales y con la segunda palabra 183 modelos (`Swift`, `City`, `i20`, etc.), preservando la señal del fabricante y gama sin ruido de versiones menores.
+   - *Resultado:* Nuevas columnas categóricas `brand` y `car_model` (Top 5 marcas: Maruti, Hyundai, Mahindra, Tata, Ford).
    - *Gráfico:* `reports/figures/decision_2_create_brand.png`.
 3. **Decisión 3 (Crear/Transformar - Antigüedad `vehicle_age`):**
    - *Motivo:* El año calendario `year` es menos informativo que la antigüedad del coche en años (`2020 - year`), la cual correlaciona directamente con la depreciación acumulada del vehículo.
@@ -156,20 +156,20 @@ Se implementó un `DummyRegressor(strategy='mean')` como línea base mínima ("n
 | Modelo | Val MAE (₹) | Val RMSE (₹) | Val R² | Supera al Dummy |
 | :--- | :---: | :---: | :---: | :---: |
 | **Dummy (Media)** | 292,053 | 471,951 | -0.0005 | *Línea Base* |
-| **Ridge Regressor** | 173,302 | 290,639 | 0.6206 | Sí (-40.7% MAE) |
-| **Random Forest** | 158,526 | 309,446 | 0.5699 | Sí (-45.7% MAE) |
-| **Gradient Boosting (Campeón)** | **146,587** | **264,637** | **0.6854** | **Sí (-49.8% MAE)** |
+| **Ridge Regressor** | 121,759 | 249,660 | 0.7200 | Sí (-58.3% MAE) |
+| **Random Forest (Campeón)** | **119,437** | **289,737** | **0.6229** | **Sí (-59.1% MAE)** |
+| **Gradient Boosting** | 130,081 | 234,719 | 0.7525 | Sí (-55.5% MAE) |
 
-> El modelo final (**Gradient Boosting**) reduce el error del Dummy prácticamente a la mitad (**-49.8%**) y eleva el R² de 0 a **0.6854**.
+> El modelo final (**Random Forest**, elegido por menor MAE en Validación) reduce el error del Dummy en un **-59.1%**.
 
 ### 3. Split Correcto sin Fugas (M2.3):
 * Partición: **Train (70% - 2,487 filas)**, **Validation (15% - 534 filas)** y **Test (15% - 534 filas)**.
 * Sin fugas: Los transformadores (`StandardScaler`, `OneHotEncoder`) se ajustan únicamente sobre Train.
 * La selección del modelo campeón se realizó comparando en Validación, manteniendo el Test completamente sellado.
 * **Resultados finales en TEST SET (Sellado):**
-  - **Test MAE:** 150,807 ₹
-  - **Test RMSE:** 273,274 ₹
-  - **Test R²:** 0.7127
+  - **Test MAE:** 117,717 ₹ (~1,308 €)
+  - **Test RMSE:** 273,935 ₹
+  - **Test R²:** 0.7113
 
 ### 4. Técnicas y Resultados Visuales (M2.4):
 * `reports/figures/model_comparison.png`: Comparativa de MAE entre familias de modelos y baseline.
@@ -194,8 +194,8 @@ Se implementó un `DummyRegressor(strategy='mean')` como línea base mínima ("n
 
 | Mínimo | Cómo se cumple |
 | :--- | :--- |
-| API con `/predict` y `/health` | [src/api.py](src/api.py) con FastAPI |
-| Pipeline empaquetado entero | `models/pipeline.joblib` = `ColumnTransformer` (StandardScaler + OneHotEncoder) + `GradientBoostingRegressor`. El cliente manda datos en crudo |
+| API con `/predict` y `/health` | [src/api.py](src/api.py) con FastAPI (también `/` con listado de endpoints) |
+| Pipeline empaquetado entero | `models/pipeline.joblib` = `ColumnTransformer` (StandardScaler + OneHotEncoder) + `RandomForestRegressor`. El cliente manda datos en crudo; la API convierte el precio a EUR (`1 EUR = 90 INR`) |
 | Esquema documentado (Swagger) | Modelos Pydantic `CarInput` / `PredictionOutput`, servidos en `/docs` |
 | Imagen Docker que arranca en local | [Dockerfile](Dockerfile) (`python:3.13-slim`, solo las dependencias de `requirements-api.txt`) |
 | Validación y errores controlados | Ver tabla de abajo |
@@ -203,8 +203,8 @@ Se implementó un `DummyRegressor(strategy='mean')` como línea base mínima ("n
 **Ejemplo de petición:**
 ```bash
 curl -X POST http://localhost:8000/predict -H "Content-Type: application/json" \
-  -d '{"brand":"Maruti","year":2015,"km_driven":50000,"fuel":"Petrol","seller_type":"Individual","transmission":"Manual","owner":"First Owner"}'
-# -> {"predicted_price": 3802.98, "currency": "EUR", "predicted_price_inr": 342268.59}
+  -d '{"brand":"Maruti","car_model":"Swift","year":2015,"km_driven":50000,"fuel":"Petrol","seller_type":"Individual","transmission":"Manual","owner":"First Owner"}'
+# -> {"predicted_price": ..., "currency": "EUR", "predicted_price_inr": ...}
 ```
 
 **Errores controlados:**
@@ -224,8 +224,8 @@ curl -X POST http://localhost:8000/predict -H "Content-Type: application/json" \
 
 | Mínimo | Cómo se cumple |
 | :--- | :--- |
-| Uso sin terminal ni Python | Formulario web con desplegables y sliders → botón "Calcular precio" → precio en grande + aviso del error medio (~150.000 INR) |
-| Consume la API de M3 | [src/app.py](src/app.py) hace `POST /predict` con `requests`. No carga el modelo. La URL se configura con la variable `API_URL` |
+| Uso sin terminal ni Python | Formulario web con desplegables dependientes (`Marca` → `Modelo` desde `models/brand_models.json`) y sliders → botón "Calcular precio" → precio en euros (`€`) + aviso del error medio (~1.308 €) |
+| Consume la API de M3 | [src/app.py](src/app.py) hace `POST /predict` con `requests`. No carga el modelo. La URL se configura vía `st.secrets["API_URL"]` o variable de entorno `API_URL` |
 | Funcionando al evaluar | Demo local guiada (sección 3) |
 | Estados de espera y error | Al abrir la app: banner verde/rojo según `/health`. Al predecir: spinner "Calculando precio...". Errores: API caída, 422 o 5xx muestran un mensaje claro |
 
@@ -235,7 +235,7 @@ curl -X POST http://localhost:8000/predict -H "Content-Type: application/json" \
 
 | Mínimo | Cómo se cumple |
 | :--- | :--- |
-| CI: linter + tests en cada PR | [.github/workflows/ci.yml](.github/workflows/ci.yml): en cada `push` y `pull_request` a `main` ejecuta `flake8` y `pytest` (6 smoke tests de la API: health, predicción válida, km negativos, combustible inválido, campo que falta y Swagger) |
+| CI: linter + tests en cada PR | [.github/workflows/ci.yml](.github/workflows/ci.yml): en cada `push` y `pull_request` a `main` ejecuta `flake8` y `pytest` (10 smoke tests de la API: raíz, health, version, predicción EUR, límite de año, km negativos, combustible inválido, campo que falta y Swagger) |
 | Procesado de un solo comando | `python run_pipeline.py`: descarga → auditoría/EDA → 5 decisiones + splits → entrenamiento → `models/pipeline.joblib`. Reproducible: con seed 42 da siempre las mismas métricas |
 
 ---
