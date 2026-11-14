@@ -71,6 +71,17 @@ if os.path.exists(METRICS_PATH):
         metrics = json.load(f)
 
 
+@app.get("/")
+def root():
+    return {
+        "message": "CarDekho Price API funcionando",
+        "docs": "/docs",
+        "health": "/health",
+        "version": "/version",
+        "predict": "/predict (POST)",
+    }
+
+
 @app.get("/health")
 def health():
     return {"status": "ok", "model_loaded": model is not None}

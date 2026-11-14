@@ -17,6 +17,12 @@ VALID_CAR = {
 }
 
 
+def test_root():
+    r = client.get("/")
+    assert r.status_code == 200
+    assert "docs" in r.json()
+
+
 def test_health():
     r = client.get("/health")
     assert r.status_code == 200
