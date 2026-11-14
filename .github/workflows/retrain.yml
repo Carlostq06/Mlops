@@ -1,0 +1,50 @@
+name: Retrain
+
+# Reentrenamiento programado (lunes 06:00 UTC) o manual desde la pestaña Actions.
+# Solo se sube el modelo nuevo si pasa la puerta de metrica (scripts/metric_gate.py).
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Guardar metricas del modelo actual
+        run: cp models/metrics.json /tmp/old_metrics.json
+
+      - name: Reentrenar (pipeline completo)
+        run: python run_pipeline.py
+
+      - name: Detectar drift (informativo)
+        run: python scripts/drift_check.py || echo "Drift detectado, revisar el informe"
+
+      - name: Puerta de metrica
+        id: gate
+        run: python scripts/metric_gate.py /tmp/old_metrics.json models/metrics.json
+
+      - name: Tests con el modelo nuevo
+        if: steps.gate.outputs.promote == 'true'
+        run: pytest -v
+
+      - name: Promover modelo (commit)
+        if: steps.gate.outputs.promote == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add models/ data/processed/
+          git commit -m "chore(retrain): modelo reentrenado promovido por la puerta de metrica"
+          git push
