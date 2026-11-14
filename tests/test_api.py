@@ -48,3 +48,9 @@ def test_predict_missing_field():
 
 def test_swagger_served():
     assert client.get("/docs").status_code == 200
+
+
+def test_version():
+    r = client.get("/version")
+    assert r.status_code == 200
+    assert r.json()["model"]["test_mae"] > 0

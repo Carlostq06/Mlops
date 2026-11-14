@@ -8,6 +8,8 @@ Cumple con todos los requisitos mínimos de M2:
 - Reproducibilidad con seeds fijas y exportación de artefacto único en models/pipeline.joblib
 """
 import os
+import json
+from datetime import datetime, timezone
 import joblib
 import pandas as pd
 import numpy as np
@@ -197,6 +199,20 @@ def train_and_evaluate():
     joblib.dump(champion_pipeline, model_artifact_path)
     print("\n5. Artefacto único exportado con éxito:")
     print(f"   -> {model_artifact_path} ({os.path.getsize(model_artifact_path)/1024:.1f} KB)")
+
+    # 6. Guardar metricas junto al modelo (las usa /version y la puerta del reentrenamiento)
+    metrics = {
+        "model_name": best_candidate["name"],
+        "trained_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "test_mae": round(test_mae, 2),
+        "test_rmse": round(test_rmse, 2),
+        "test_r2": round(test_r2, 4),
+        "dummy_val_mae": round(results[0]["mae"], 2),
+        "n_train": len(X_train),
+    }
+    with open(os.path.join(MODELS_DIR, "metrics.json"), "w", encoding="utf-8") as f:
+        json.dump(metrics, f, indent=2)
+    print(f"   -> {os.path.join(MODELS_DIR, 'metrics.json')}")
     print("=" * 70)
 
 
